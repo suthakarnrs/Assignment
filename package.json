@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "description": "Smart Reconciliation & Audit System using MERN stack",
   "scripts": {
-    "install-all": "cd backend && npm install && cd ../frontend && npm install"
+    "install-all": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "deploy": "vercel --prod"
   },
   "keywords": ["mern", "reconciliation", "audit", "mongodb", "react", "nodejs"],
   "author": "",
