@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:5.0
+    container_name: reconciliation_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: reconciliation_system
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - reconciliation_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: reconciliation_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - reconciliation_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reconciliation_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/reconciliation_system?authSource=admin
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your_super_secret_jwt_key_here
+      JWT_EXPIRE: 7d
+      MAX_FILE_SIZE: 52428800
+      MAX_RECORDS: 50000
+      RECONCILIATION_TOLERANCE: 0.02
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - reconciliation_network
+
+  workers:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reconciliation_workers
+    restart: unless-stopped
+    command: ["node", "scripts/startWorkers.js"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/reconciliation_system?authSource=admin
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your_super_secret_jwt_key_here
+      MAX_FILE_SIZE: 52428800
+      MAX_RECORDS: 50000
+      RECONCILIATION_TOLERANCE: 0.02
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - reconciliation_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reconciliation_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    depends_on:
+      - backend
+    networks:
+      - reconciliation_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  reconciliation_network:
+    driver: bridge
